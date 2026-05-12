@@ -3,7 +3,7 @@
 // Tests for pure utility logic in GoodEats (formatAgo, filtering,
 // map-pin projection, feed sorting)
 // ─────────────────────────────────────────────────────────────
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   MOCK_RESTAURANT_1,
   MOCK_RESTAURANT_2,

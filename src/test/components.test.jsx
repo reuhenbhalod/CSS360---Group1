@@ -2,37 +2,23 @@
 // src/test/components.test.jsx
 // Rendering and interaction tests for GoodEats React components
 // ─────────────────────────────────────────────────────────────
-import React from 'react';
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-  act,
-} from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import GoodEats from '../App.jsx';
-import {
-  MOCK_API_RESPONSE,
-  MOCK_RESTAURANT_1,
-  MOCK_PLACE_1,
-  MOCK_REDDIT_POST,
-  MOCK_NEWS_ARTICLE,
-  MOCK_GUARDIAN_ARTICLE,
-} from './mockData.js';
+import { MOCK_API_RESPONSE } from './mockData.js';
 
 // ─── fetch mock helpers ───────────────────────────────────────
 
 function mockFetchSuccess(data = MOCK_API_RESPONSE) {
-  global.fetch = vi.fn().mockResolvedValue({
+  globalThis.fetch = vi.fn().mockResolvedValue({
     ok: true,
     json: async () => data,
   });
 }
 
 function mockFetchFailure() {
-  global.fetch = vi.fn().mockRejectedValue(new Error('Network Error'));
+  globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network Error'));
 }
 
 beforeEach(() => {
@@ -57,7 +43,7 @@ describe('GoodEats App — initial render', () => {
 
   it('shows a loading indicator before data arrives', () => {
     // fetch never resolves during this check
-    global.fetch = vi.fn(() => new Promise(() => {}));
+    globalThis.fetch = vi.fn(() => new Promise(() => {}));
     render(<GoodEats />);
     // The main spinner message (not the button label)
     expect(
@@ -74,8 +60,8 @@ describe('GoodEats App — initial render', () => {
   it('calls the /api/all endpoint on mount', async () => {
     mockFetchSuccess();
     render(<GoodEats />);
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
-    expect(global.fetch).toHaveBeenCalledWith(
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(1));
+    expect(globalThis.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/all'),
     );
   });
@@ -322,7 +308,7 @@ describe('GoodEats App — refresh button', () => {
     const refreshBtn = await screen.findByRole('button', { name: /refresh/i });
     fireEvent.click(refreshBtn);
 
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(2));
   });
 });
 
