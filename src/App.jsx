@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Star, MapPin, Clock, MessageSquare, Newspaper, Map as MapIcon, Search, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { MapPin, MessageSquare, Newspaper, Map as MapIcon, Search, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
 
 // ============================================================
 // GoodEats v0.5 - Bothell, WA Dashboard
@@ -231,7 +231,10 @@ export default function GoodEats() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    async function init() { await load(); }
+    init();
+  }, []);
 
   const mapPins = useMemo(() => {
     if (!data) return [];
