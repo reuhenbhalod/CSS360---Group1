@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { MapPin, MessageSquare, Newspaper, Map as MapIcon, Search, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
+import { MapPin, MessageSquare, Newspaper, Map as MapIcon, Search, RefreshCw, AlertCircle, CheckCircle2, Shuffle } from "lucide-react";
 
 // ============================================================
 // GoodEats v0.5 - Bothell, WA Dashboard
@@ -340,9 +340,24 @@ export default function GoodEats() {
               <section>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", paddingBottom: "12px", borderBottom: "2px solid #1F2937" }}>
                   <h2 style={{ fontFamily: "'Source Serif Pro', Georgia, serif", fontSize: "22px", fontWeight: 600, margin: 0 }}>Restaurants & Places</h2>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "white", border: "1px solid #E5E7EB", padding: "6px 10px", width: "260px" }}>
-                    <Search size={14} color="#6B7280" strokeWidth={1.5} />
-                    <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter by name or category..." style={{ border: "none", outline: "none", fontSize: "13px", flex: 1, background: "transparent", fontFamily: "inherit" }} />
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <button
+                      onClick={() => {
+                        const pool = [...filteredRestaurants, ...filteredPlaces];
+                        if (pool.length === 0) return;
+                        const pick = pool[Math.floor(Math.random() * pool.length)];
+                        setHighlighted(pick.id);
+                      }}
+                      disabled={filteredRestaurants.length + filteredPlaces.length === 0}
+                      title="Pick a random venue from the visible list"
+                      style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: "white", border: "1px solid #1F2937", fontSize: "11px", fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer", color: "#1F2937" }}
+                    >
+                      <Shuffle size={12} strokeWidth={1.8} />Pick One
+                    </button>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "white", border: "1px solid #E5E7EB", padding: "6px 10px", width: "260px" }}>
+                      <Search size={14} color="#6B7280" strokeWidth={1.5} />
+                      <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter by name or category..." style={{ border: "none", outline: "none", fontSize: "13px", flex: 1, background: "transparent", fontFamily: "inherit" }} />
+                    </div>
                   </div>
                 </div>
 
