@@ -262,6 +262,11 @@ export default function GoodEats() {
     } catch (e) {
       console.warn("Backend unreachable, using mock fallback:", e);
       setData(parseApiResponse(MOCK_FALLBACK) ?? MOCK_FALLBACK);
+      setData(parseApiResponse(body) || body);
+      setUsingMock(false);
+    } catch (e) {
+      console.warn("Backend unreachable, using mock fallback:", e);
+      setData(parseApiResponse(MOCK_FALLBACK) || MOCK_FALLBACK);
       setUsingMock(true);
     } finally {
       setLoading(false);
