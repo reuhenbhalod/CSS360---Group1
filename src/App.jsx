@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { MapPin, MessageSquare, Newspaper, Map as MapIcon, Search, RefreshCw, AlertCircle, CheckCircle2, Shuffle, Star } from "lucide-react";
+import { parseApiResponse } from "./parsers.js";
 
 // ============================================================
 // GoodEats v0.5 - Bothell, WA Dashboard
@@ -256,11 +257,11 @@ export default function GoodEats() {
       const resp = await fetch(`${API_BASE}/api/all`);
       if (!resp.ok) throw new Error(`Backend returned ${resp.status}`);
       const body = await resp.json();
-      setData(body);
+      setData(parseApiResponse(body) || body);
       setUsingMock(false);
     } catch (e) {
       console.warn("Backend unreachable, using mock fallback:", e);
-      setData(MOCK_FALLBACK);
+      setData(parseApiResponse(MOCK_FALLBACK) || MOCK_FALLBACK);
       setUsingMock(true);
     } finally {
       setLoading(false);
