@@ -5,12 +5,19 @@
 # ─────────────────────────────────────────────────────────────
 
 import json
-import os
-import sqlite3
-import tempfile
+
 import pytest
 
-# Point DB at a temp file so tests never touch the real DB
+from database import get_conn
+from ingestion import (
+    get_cached_envelope,
+    ingest_feed_items,
+    ingest_venues,
+    save_cached_envelope,
+)
+
+
+# Point DB at a temp file so tests never touch the real DB.
 @pytest.fixture(autouse=True)
 def temp_db(monkeypatch, tmp_path):
     db_file = tmp_path / "test.db"
@@ -18,9 +25,6 @@ def temp_db(monkeypatch, tmp_path):
     monkeypatch.setattr(database, "DB_PATH", db_file)
     database.init_db()
     yield db_file
-
-from database import get_conn
-from ingestion import ingest_feed_items, ingest_venues, get_cached_envelope, save_cached_envelope
 
 # ── Sample data ───────────────────────────────────────────────
 
