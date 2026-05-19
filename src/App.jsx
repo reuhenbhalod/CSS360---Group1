@@ -270,11 +270,6 @@ export default function GoodEats() {
     } catch (e) {
       console.warn("Backend unreachable, using mock fallback:", e);
       setData(parseApiResponse(MOCK_FALLBACK) ?? MOCK_FALLBACK);
-      setData(parseApiResponse(body) || body);
-      setUsingMock(false);
-    } catch (e) {
-      console.warn("Backend unreachable, using mock fallback:", e);
-      setData(parseApiResponse(MOCK_FALLBACK) || MOCK_FALLBACK);
       setUsingMock(true);
     } finally {
       setLoading(false);
@@ -341,7 +336,7 @@ export default function GoodEats() {
       <header style={{ borderBottom: "1px solid #1F2937", background: "white", padding: "20px 32px" }}>
         <div style={{ maxWidth: "1400px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
           <div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "#6B7280", letterSpacing: "0.15em", marginBottom: "4px" }}>VOL. 1 · ISSUE 0.5 · APR 2026</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "#6B7280", letterSpacing: "0.15em", marginBottom: "4px" }}>VOL. 1 · ISSUE 1.0 · {new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" }).toUpperCase()}</div>
             <h1 style={{ fontFamily: "'Source Serif Pro', Georgia, serif", fontSize: "36px", fontWeight: 700, margin: 0, letterSpacing: "-0.02em" }}>GoodEats<span style={{ color: "#B45309" }}>.</span></h1>
             <div style={{ fontSize: "13px", color: "#4B5563", fontStyle: "italic", marginTop: "2px" }}>A multi-source dining digest for Bothell, Washington</div>
           </div>
