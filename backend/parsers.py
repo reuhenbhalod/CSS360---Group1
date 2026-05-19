@@ -53,7 +53,9 @@ def _osm_yes_no(v: Any):
 # ── Venue parsers ────────────────────────────────────────────
 
 def parse_foursquare_restaurant(raw: dict) -> dict | None:
-    """Foursquare Places v3 → normalized venue."""
+    """Foursquare Places → normalized venue. Accepts both the current
+    Service API shape (`fsq_place_id`, top-level `latitude`/`longitude`)
+    and the legacy v3 shape (`fsq_id`, `geocodes.main.*`)."""
     if not isinstance(raw, dict):
         return None
     loc = raw.get("location") or {}
@@ -62,18 +64,18 @@ def parse_foursquare_restaurant(raw: dict) -> dict | None:
     for c in _arr(raw.get("categories")):
         if isinstance(c, str):
             cats.append(c)
-        elif isinstance(c, dict) and c.get("name"):
-            cats.append(_str(c["name"]))
+        elif isinstance(c, dict) and (c.get("short_name") or c.get("name")):
+            cats.append(_str(c.get("short_name") or c.get("name")))
     return {
-        "id": _str(raw.get("fsq_id") or raw.get("id")),
+        "id": _str(raw.get("fsq_place_id") or raw.get("fsq_id") or raw.get("id")),
         "kind": "restaurant",
         "source": "foursquare",
         "name": _str(raw.get("name")),
         "categories": cats,
         "address": _str(raw.get("address") or loc.get("address") or loc.get("formatted_address")),
         "city": raw.get("city") or loc.get("locality"),
-        "lat": _num(raw.get("lat") if raw.get("lat") is not None else geo.get("latitude")),
-        "lon": _num(raw.get("lon") if raw.get("lon") is not None else geo.get("longitude")),
+        "lat": _num(raw.get("lat") if raw.get("lat") is not None else (raw.get("latitude") if raw.get("latitude") is not None else geo.get("latitude"))),
+        "lon": _num(raw.get("lon") if raw.get("lon") is not None else (raw.get("longitude") if raw.get("longitude") is not None else geo.get("longitude"))),
         "distance_m": _num(raw.get("distance_m") if raw.get("distance_m") is not None else raw.get("distance")),
     }
 

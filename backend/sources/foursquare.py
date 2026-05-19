@@ -1,15 +1,23 @@
-"""Foursquare Places v3 — restaurants near a point.
+"""Foursquare Places — restaurants near a point.
 
-Returns the raw `results` array verbatim so the frontend parser
-(parseFoursquareRestaurant in src/parsers.js) can normalize it.
+Uses the current Foursquare Service API (`places-api.foursquare.com`)
+with Bearer auth + version header. The legacy v3 endpoint
+(`api.foursquare.com/v3/places/search`) returns 401 for keys issued
+through the current developer console.
+
+Returns the raw `results` array; the new shape is flatter than v3
+(`fsq_place_id` + top-level `latitude`/`longitude` instead of
+`fsq_id` + `geocodes.main.*`). The frontend parser handles both
+shapes defensively.
 """
 import os
 import httpx
 from ._common import envelope
 
-ENDPOINT = "https://api.foursquare.com/v3/places/search"
-# 13000 is the Foursquare top-level category id for "Dining and Drinking".
-FOOD_CATEGORY = "13000"
+ENDPOINT = "https://places-api.foursquare.com/places/search"
+API_VERSION = "2025-06-17"
+# 4d4b7105d754a06374d81259 = "Food" parent category in the Service API.
+FOOD_CATEGORY = "4d4b7105d754a06374d81259"
 
 
 async def fetch(client: httpx.AsyncClient, lat: float, lon: float, radius_m: int) -> dict:
@@ -20,11 +28,15 @@ async def fetch(client: httpx.AsyncClient, lat: float, lon: float, radius_m: int
     try:
         resp = await client.get(
             ENDPOINT,
-            headers={"Authorization": key, "Accept": "application/json"},
+            headers={
+                "Authorization": f"Bearer {key}",
+                "X-Places-Api-Version": API_VERSION,
+                "Accept": "application/json",
+            },
             params={
                 "ll": f"{lat},{lon}",
                 "radius": radius_m,
-                "categories": FOOD_CATEGORY,
+                "fsq_category_ids": FOOD_CATEGORY,
                 "sort": "DISTANCE",
                 "limit": 20,
             },

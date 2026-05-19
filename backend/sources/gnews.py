@@ -15,7 +15,11 @@ async def fetch(client: httpx.AsyncClient) -> dict:
         resp = await client.get(
             ENDPOINT,
             params={
-                "q": "Bothell restaurant OR dining",
+                # The free GNews tier returns ~0 results for hyper-local
+                # queries like "Bothell restaurant". A broader food query
+                # filtered to US news gives ~10 articles/day with enough
+                # signal to keep the news section populated.
+                "q": "restaurant OR dining",
                 "country": "us",
                 "lang": "en",
                 "max": 10,

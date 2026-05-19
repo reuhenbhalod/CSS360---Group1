@@ -3,7 +3,7 @@ import { MapPin, MessageSquare, Newspaper, Map as MapIcon, Search, RefreshCw, Al
 import { parseApiResponse } from "./parsers.js";
 
 // ============================================================
-// GoodEats v0.5 - Bothell, WA Dashboard
+// GoodEats v1 - Bothell, WA Dashboard
 // Phase 1: Raw API data only, no ML processing
 // Sources: Foursquare, OpenStreetMap, Reddit, GNews, Guardian
 // ============================================================
@@ -130,6 +130,14 @@ function formatAgo(unixSec) {
   return `${Math.floor(diff / 604800)}w ago`;
 }
 
+const REDDIT_TITLE_MAX = 110;
+const REDDIT_BODY_MAX = 180;
+
+function truncate(s, max) {
+  if (!s) return "";
+  return s.length > max ? s.slice(0, max).trimEnd() + "…" : s;
+}
+
 function RedditPost({ post }) {
   const ago = post.created_utc ? formatAgo(post.created_utc) : "";
   return (
@@ -139,9 +147,9 @@ function RedditPost({ post }) {
         <span style={{ fontSize: "11px", color: "#9CA3AF", fontFamily: "'JetBrains Mono', monospace" }}>{post.subreddit} · {ago}</span>
       </div>
       <h4 style={{ fontFamily: "'Source Serif Pro', Georgia, serif", fontSize: "15px", fontWeight: 600, color: "#111827", margin: "0 0 6px 0", lineHeight: 1.3 }}>
-        <a href={post.permalink} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none" }}>{post.title}</a>
+        <a href={post.permalink} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none" }} title={post.title}>{truncate(post.title, REDDIT_TITLE_MAX)}</a>
       </h4>
-      {post.selftext && <p style={{ fontSize: "13px", color: "#4B5563", lineHeight: 1.5, margin: "0 0 8px 0" }}>{post.selftext}</p>}
+      {post.selftext && <p style={{ fontSize: "13px", color: "#4B5563", lineHeight: 1.5, margin: "0 0 8px 0" }}>{truncate(post.selftext, REDDIT_BODY_MAX)}</p>}
       <div style={{ display: "flex", gap: "14px", fontSize: "11px", color: "#6B7280", fontFamily: "'JetBrains Mono', monospace" }}>
         <span>↑ {post.score}</span>
         <span style={{ display: "flex", alignItems: "center", gap: "3px" }}><MessageSquare size={11} strokeWidth={1.5} />{post.num_comments}</span>
@@ -333,9 +341,7 @@ export default function GoodEats() {
       <header style={{ borderBottom: "1px solid #1F2937", background: "white", padding: "20px 32px" }}>
         <div style={{ maxWidth: "1400px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
           <div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "#6B7280", letterSpacing: "0.15em", marginBottom: "4px" }}>
-  VOL. 1 · ISSUE 1.0 · {new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" }).toUpperCase()}
-</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "#6B7280", letterSpacing: "0.15em", marginBottom: "4px" }}>VOL. 1 · ISSUE 0.5 · APR 2026</div>
             <h1 style={{ fontFamily: "'Source Serif Pro', Georgia, serif", fontSize: "36px", fontWeight: 700, margin: 0, letterSpacing: "-0.02em" }}>GoodEats<span style={{ color: "#B45309" }}>.</span></h1>
             <div style={{ fontSize: "13px", color: "#4B5563", fontStyle: "italic", marginTop: "2px" }}>A multi-source dining digest for Bothell, Washington</div>
           </div>

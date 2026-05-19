@@ -16,15 +16,14 @@ import json
 import os
 from ._common import envelope
 
-URL = "https://www.reddit.com/r/Seattle/search.json"
+# r/SeattleFood is exclusively food content (restaurant reviews, menu
+# spotlights, reservation tips, etc.) for the greater Seattle metro
+# — including Bothell. Hitting `/hot.json` directly is cleaner than
+# search-based filtering and avoids the false positives we got with
+# r/Seattle (J6 town halls, missing-person alerts, etc.).
+URL = "https://www.reddit.com/r/SeattleFood/hot.json"
 DEFAULT_UA = "goodeats/0.5 (class project)"
-QUERY = {
-    "q": "bothell restaurant OR food OR brunch OR dinner",
-    "restrict_sr": "1",
-    "sort": "new",
-    "limit": "20",
-    "t": "year",
-}
+QUERY = {"limit": "25"}
 
 
 def _build_url() -> str:
