@@ -8,10 +8,14 @@
 #   api_cache      — per-source cache envelope (TTL-based)
 # ─────────────────────────────────────────────────────────────
 
+import os
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent / "goodeats.db"
+# Honor GOODEATS_DB_PATH so the Docker container can point at a mounted
+# volume (e.g. /app/data/goodeats.db) without code changes. Falls back to
+# the file next to this module for local dev.
+DB_PATH = Path(os.getenv("GOODEATS_DB_PATH") or (Path(__file__).parent / "goodeats.db"))
 
 # ── Connection ────────────────────────────────────────────────
 
