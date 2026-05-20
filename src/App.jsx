@@ -331,6 +331,7 @@ export default function GoodEats() {
             <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "#6B7280", letterSpacing: "0.15em", marginBottom: "4px" }}>
   VOL. 1 · ISSUE 1.0 · {new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" }).toUpperCase()}
 </div>
+
             <h1 style={{ fontFamily: "'Source Serif Pro', Georgia, serif", fontSize: "36px", fontWeight: 700, margin: 0, letterSpacing: "-0.02em" }}>GoodEats<span style={{ color: "#B45309" }}>.</span></h1>
             <div style={{ fontSize: "13px", color: "#4B5563", fontStyle: "italic", marginTop: "2px" }}>A multi-source dining digest for Bothell, Washington</div>
           </div>
