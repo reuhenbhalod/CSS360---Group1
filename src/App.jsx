@@ -3,8 +3,8 @@ import { MapPin, MessageSquare, Newspaper, Map as MapIcon, Search, RefreshCw, Al
 import { parseApiResponse } from "./parsers.js";
 
 // ============================================================
-// GoodEats v1 - Bothell, WA Dashboard
-// Phase 1: Raw API data only, no ML processing
+// GoodEats v1.0 - Bothell, WA Dashboard
+// Phase 2: Live API data, no ML processing
 // Sources: Foursquare, OpenStreetMap, Reddit, GNews, Guardian
 // ============================================================
 
@@ -345,7 +345,7 @@ export default function GoodEats() {
               <RefreshCw size={12} strokeWidth={1.8} style={{ animation: loading ? "spin 1s linear infinite" : "none" }} />
               {loading ? "Loading" : "Refresh"}
             </button>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#6B7280", letterSpacing: "0.1em", textAlign: "right" }}>5 SOURCES · NO ML</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#6B7280", letterSpacing: "0.1em", textAlign: "right" }}>5 SOURCES · {usingMock ? "MOCK DATA" : "LIVE DATA"}</div>
           </div>
         </div>
       </header>
@@ -472,8 +472,8 @@ export default function GoodEats() {
         )}
 
         <footer style={{ marginTop: "48px", paddingTop: "20px", borderTop: "1px solid #E5E7EB", display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#6B7280", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.05em" }}>
-          <div>GOODEATS · v0.5 · CLASS PROJECT BUILD</div>
-          <div>NO ML PROCESSING · RAW API DATA · PHASE 1 OF 3</div>
+          <div>GOODEATS · v1.0 · CLASS PROJECT BUILD</div>
+          <div>NO ML PROCESSING · {usingMock ? "MOCK DATA" : "LIVE API DATA"} · PHASE 2 OF 3</div>
         </footer>
       </main>
     </div>
