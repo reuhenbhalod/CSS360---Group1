@@ -73,11 +73,21 @@ jobs:
 
       # 4. Package
       - name: 4️⃣  Package — docker compose build
-        # The compose file references backend/.env via env_file; create a
-        # blank one so missing keys gracefully degrade (ok:false) rather
-        # than fail the build. Real CI never has the prod keys.
+        # Write API keys from GitHub Actions Secrets into backend/.env so
+        # the compose stack can reach the real upstream APIs. Any secret
+        # left unset in repo settings becomes a blank line and that source
+        # gracefully degrades to ok:false rather than failing the build.
+        env:
+          FOURSQUARE_API_KEY: ${{ secrets.FOURSQUARE_API_KEY }}
+          GNEWS_API_KEY: ${{ secrets.GNEWS_API_KEY }}
+          GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
         run: |
-          touch backend/.env
+          cat > backend/.env <<EOF
+          FOURSQUARE_API_KEY=${FOURSQUARE_API_KEY}
+          GNEWS_API_KEY=${GNEWS_API_KEY}
+          GUARDIAN_API_KEY=${GUARDIAN_API_KEY}
+          REDDIT_USER_AGENT=goodeats/0.5 (class project)
+          EOF
           docker compose build
 
       # 5. Deploy (to ephemeral CI container, then tear down)

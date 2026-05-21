@@ -77,6 +77,11 @@ describe('GoodEats App — initial render', () => {
   it('displays OSM place names after successful fetch', async () => {
     mockFetchSuccess();
     render(<GoodEats />);
+    // Cuisine dropdown defaults to the most-common cuisine to keep the
+    // initial list short; widen it to "All" so OSM places of any cuisine
+    // are visible for this assertion.
+    const cuisineSelect = await screen.findByTitle(/filter venues by cuisine/i);
+    fireEvent.change(cuisineSelect, { target: { value: '__all__' } });
     await waitFor(() =>
       expect(screen.getByText('Hop & Hound Public House')).toBeInTheDocument(),
     );
@@ -163,6 +168,12 @@ describe('GoodEats App — search filter', () => {
       /filter by name or category/i,
     );
 
+    // The cuisine dropdown defaults to the most-common cuisine to keep
+    // the initial list short; widen it to "All" so this search test can
+    // verify name/category matching across the full data set.
+    const cuisineSelect = screen.getByTitle(/filter venues by cuisine/i);
+    fireEvent.change(cuisineSelect, { target: { value: '__all__' } });
+
     await userEvent.type(input, 'italian');
 
     await waitFor(() => {
@@ -206,13 +217,10 @@ describe('GoodEats App — search filter', () => {
 // ─── Feed filter tabs ────────────────────────────────────────
 
 describe('GoodEats App — feed filter tabs', () => {
-  it('renders All, Reddit, and News tab buttons', async () => {
+  it('renders Reddit and News tab buttons', async () => {
     mockFetchSuccess();
     render(<GoodEats />);
     await waitFor(() => {
-      expect(
-        screen.getByRole('button', { name: /^all$/i }),
-      ).toBeInTheDocument();
       expect(
         screen.getByRole('button', { name: /^reddit$/i }),
       ).toBeInTheDocument();
@@ -265,25 +273,25 @@ describe('GoodEats App — feed filter tabs', () => {
     );
   });
 
-  it('shows all feed items when All tab is clicked after switching', async () => {
+  it('switches back to reddit posts after viewing news', async () => {
     mockFetchSuccess();
     render(<GoodEats />);
 
     const newsBtn = await screen.findByRole('button', { name: /^news$/i });
     fireEvent.click(newsBtn);
 
-    const allBtn = screen.getByRole('button', { name: /^all$/i });
-    fireEvent.click(allBtn);
+    const redditBtn = screen.getByRole('button', { name: /^reddit$/i });
+    fireEvent.click(redditBtn);
 
     await waitFor(() => {
       expect(
         screen.getByText('Best brunch spots in downtown Bothell?'),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(
+        screen.queryByText(
           "Bothell's Main Street revitalization brings six new restaurants",
         ),
-      ).toBeInTheDocument();
+      ).not.toBeInTheDocument();
     });
   });
 });

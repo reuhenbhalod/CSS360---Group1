@@ -132,6 +132,7 @@ function formatAgo(unixSec) {
 
 const REDDIT_TITLE_MAX = 110;
 const REDDIT_BODY_MAX = 180;
+const REDDIT_FEED_LIMIT = 8;
 
 function truncate(s, max) {
   if (!s) return "";
@@ -240,7 +241,7 @@ export default function GoodEats() {
   const [loading, setLoading] = useState(true);
   const [usingMock, setUsingMock] = useState(false);
   const [highlighted, setHighlighted] = useState(null);
-  const [feedFilter, setFeedFilter] = useState("all");
+  const [feedFilter, setFeedFilter] = useState("reddit");
   const [search, setSearch] = useState("");
   const [favorites, setFavorites] = useState(() => {
     try {
@@ -249,6 +250,7 @@ export default function GoodEats() {
     } catch { return new Set(); }
   });
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [cuisineFilter, setCuisineFilter] = useState("");
 
   function toggleFavorite(id) {
     setFavorites((prev) => {
@@ -288,35 +290,71 @@ export default function GoodEats() {
     return [...fsq, ...osm].filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon));
   }, [data]);
 
+  const cuisineOptions = useMemo(() => {
+    if (!data) return [];
+    const counts = new Map();
+    const bump = (raw) => {
+      const key = (raw || "").toLowerCase().trim();
+      if (!key) return;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    };
+    for (const r of (data.restaurants?.data || [])) {
+      for (const c of (r.categories || [])) bump(c);
+    }
+    for (const p of (data.places?.data || [])) {
+      for (const c of (p.cuisine || [])) bump(c);
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([cuisine, count]) => ({ cuisine, count }));
+  }, [data]);
+
+  // When the user hasn't picked a cuisine yet (cuisineFilter === ""),
+  // fall back to the most-common one so the initial list stays short.
+  const effectiveCuisine = cuisineFilter || cuisineOptions[0]?.cuisine || "__all__";
+
   const filteredRestaurants = useMemo(() => {
     if (!data?.restaurants?.data) return [];
     const q = search.toLowerCase();
     return data.restaurants.data.filter((r) => {
       if (showFavoritesOnly && !favorites.has(r.id)) return false;
+      if (effectiveCuisine !== "__all__") {
+        const hit = (r.categories || []).some((c) => (c || "").toLowerCase().trim() === effectiveCuisine);
+        if (!hit) return false;
+      }
       if (!search) return true;
       return (r.name || "").toLowerCase().includes(q) ||
         (r.categories || []).some((c) => (c || "").toLowerCase().includes(q));
     });
-  }, [data, search, showFavoritesOnly, favorites]);
+  }, [data, search, showFavoritesOnly, favorites, effectiveCuisine]);
 
   const filteredPlaces = useMemo(() => {
     if (!data?.places?.data) return [];
     const q = search.toLowerCase();
     return data.places.data.filter((p) => {
       if (showFavoritesOnly && !favorites.has(p.id)) return false;
+      if (effectiveCuisine !== "__all__") {
+        const hit = (p.cuisine || []).some((c) => (c || "").toLowerCase().trim() === effectiveCuisine);
+        if (!hit) return false;
+      }
       if (!search) return true;
       return (p.name || "").toLowerCase().includes(q) ||
         (p.cuisine || []).some((c) => (c || "").toLowerCase().includes(q));
     });
-  }, [data, search, showFavoritesOnly, favorites]);
+  }, [data, search, showFavoritesOnly, favorites, effectiveCuisine]);
+
+  const formatCuisine = (c) =>
+    c.replace(/_/g, " ").replace(/\b\w/g, (ch) => ch.toUpperCase());
 
   const feedItems = useMemo(() => {
     if (!data) return [];
     const items = [];
-    if (feedFilter === "all" || feedFilter === "reddit") {
-      (data.reddit?.data || []).forEach((p) => items.push({ kind: "reddit", data: p, sort: p.created_utc * 1000 }));
+    if (feedFilter === "reddit") {
+      (data.reddit?.data || [])
+        .slice(0, REDDIT_FEED_LIMIT)
+        .forEach((p) => items.push({ kind: "reddit", data: p, sort: p.created_utc * 1000 }));
     }
-    if (feedFilter === "all" || feedFilter === "news") {
+    if (feedFilter === "news") {
       (data.news?.data || []).forEach((a) => items.push({ kind: "gnews", data: a, sort: new Date(a.publishedAt).getTime() }));
       (data.articles?.data || []).forEach((a) => items.push({ kind: "guardian", data: a, sort: new Date(a.publishedAt).getTime() }));
     }
@@ -410,6 +448,19 @@ export default function GoodEats() {
                     >
                       <Shuffle size={12} strokeWidth={1.8} />Pick One
                     </button>
+                    {cuisineOptions.length > 0 && (
+                      <select
+                        value={effectiveCuisine}
+                        onChange={(e) => setCuisineFilter(e.target.value)}
+                        title="Filter venues by cuisine"
+                        style={{ padding: "6px 10px", fontSize: "12px", fontFamily: "'JetBrains Mono', monospace", border: "1px solid #1F2937", background: "white", color: "#1F2937", cursor: "pointer", letterSpacing: "0.04em" }}
+                      >
+                        <option value="__all__">All cuisines</option>
+                        {cuisineOptions.map(({ cuisine, count }) => (
+                          <option key={cuisine} value={cuisine}>{formatCuisine(cuisine)} ({count})</option>
+                        ))}
+                      </select>
+                    )}
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "white", border: "1px solid #E5E7EB", padding: "6px 10px", width: "260px" }}>
                       <Search size={14} color="#6B7280" strokeWidth={1.5} />
                       <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter by name or category..." style={{ border: "none", outline: "none", fontSize: "13px", flex: 1, background: "transparent", fontFamily: "inherit" }} />
@@ -452,7 +503,7 @@ export default function GoodEats() {
                 <div style={{ paddingBottom: "12px", borderBottom: "2px solid #1F2937", marginBottom: "8px" }}>
                   <h2 style={{ fontFamily: "'Source Serif Pro', Georgia, serif", fontSize: "22px", fontWeight: 600, margin: "0 0 10px 0" }}>The Feed</h2>
                   <div style={{ display: "flex", gap: "4px" }}>
-                    {[{ key: "all", label: "All" }, { key: "reddit", label: "Reddit" }, { key: "news", label: "News" }].map((t) => (
+                    {[{ key: "reddit", label: "Reddit" }, { key: "news", label: "News" }].map((t) => (
                       <button key={t.key} onClick={() => setFeedFilter(t.key)} style={{ padding: "5px 12px", fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "'JetBrains Mono', monospace", border: feedFilter === t.key ? "1px solid #1F2937" : "1px solid #E5E7EB", background: feedFilter === t.key ? "#1F2937" : "white", color: feedFilter === t.key ? "white" : "#4B5563", cursor: "pointer" }}>{t.label}</button>
                     ))}
                   </div>
