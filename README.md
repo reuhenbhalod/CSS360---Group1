@@ -49,23 +49,6 @@ PBKDF2). The passphrase is shared out-of-band (Slack DM / password manager).
 
 Then run the app normally (`python main.py`, `npm run dev`, or `./scripts/cicd.sh`).
 
-### When you rotate keys (project owner)
-
-1. Update `backend/.env` with the new key values.
-2. Re-encrypt and commit:
-   ```bash
-   ./scripts/encrypt-env.sh              # writes backend/.env.enc
-   git add backend/.env.enc && git commit -m "Rotate API keys"
-   ```
-3. Tell teammates to re-run `./scripts/cicd.sh --decrypt-keys` (use the same
-   passphrase unless you also rotated that).
-
-**Why this works:** the encrypted blob is safe to commit (decryption requires
-the passphrase). Only one secret — the passphrase — needs to be shared out-of-band,
-instead of three API keys that change whenever you rotate.
-
----
-
 ## CI/CD pipeline (grader guide)
 
 The hand-built pipeline at [`scripts/cicd.sh`](scripts/cicd.sh) implements all six required stages and prints a colored status line for each one. It exits non-zero on any failure.
