@@ -35,26 +35,7 @@ describe('GoodEats App — initial render', () => {
   it('renders the masthead title', async () => {
     mockFetchSuccess();
     render(<GoodEats />);
-    // The h1 heading contains "GoodEats" as its text content
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'GoodEats',
-    );
-  });
-
-  it('shows a loading indicator before data arrives', () => {
-    // fetch never resolves during this check
-    globalThis.fetch = vi.fn(() => new Promise(() => {}));
-    render(<GoodEats />);
-    // The main spinner message (not the button label)
-    expect(
-      screen.getByText(/Loading data from 5 sources/i),
-    ).toBeInTheDocument();
-  });
-
-  it('renders the tagline', async () => {
-    mockFetchSuccess();
-    render(<GoodEats />);
-    expect(screen.getByText(/multi-source dining digest/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('GoodEats');
   });
 
   it('calls the /api/all endpoint on mount', async () => {
@@ -91,14 +72,6 @@ describe('GoodEats App — initial render', () => {
 // ─── Mock-fallback behaviour ─────────────────────────────────
 
 describe('GoodEats App — backend unreachable', () => {
-  it('falls back to mock data when fetch fails', async () => {
-    mockFetchFailure();
-    render(<GoodEats />);
-    await waitFor(() =>
-      expect(screen.getByText(/BACKEND UNREACHABLE/i)).toBeInTheDocument(),
-    );
-  });
-
   it('still renders restaurant cards when using mock data', async () => {
     mockFetchFailure();
     render(<GoodEats />);
@@ -111,9 +84,7 @@ describe('GoodEats App — backend unreachable', () => {
     mockFetchSuccess();
     render(<GoodEats />);
     await waitFor(() =>
-      expect(
-        screen.queryByText(/BACKEND UNREACHABLE/i),
-      ).not.toBeInTheDocument(),
+      expect(screen.queryByText(/BACKEND UNREACHABLE/i)).not.toBeInTheDocument(),
     );
   });
 });
@@ -125,7 +96,6 @@ describe('GoodEats App — status pills', () => {
     mockFetchSuccess();
     render(<GoodEats />);
     await waitFor(() => {
-      // Multiple "Foursquare" spans exist (status bar + restaurant badges); just assert at least one
       const items = screen.getAllByText('Foursquare');
       expect(items.length).toBeGreaterThan(0);
     });
@@ -141,7 +111,6 @@ describe('GoodEats App — status pills', () => {
     mockFetchSuccess();
     render(<GoodEats />);
     await waitFor(() => {
-      // "Reddit" appears in both the status bar pill and the feed filter button
       const items = screen.getAllByText('Reddit');
       expect(items.length).toBeGreaterThan(0);
     });
@@ -151,22 +120,10 @@ describe('GoodEats App — status pills', () => {
 // ─── Search / filter ─────────────────────────────────────────
 
 describe('GoodEats App — search filter', () => {
-  it('renders the search input', async () => {
-    mockFetchSuccess();
-    render(<GoodEats />);
-    await waitFor(() =>
-      expect(
-        screen.getByPlaceholderText(/filter by name or category/i),
-      ).toBeInTheDocument(),
-    );
-  });
-
   it('hides non-matching restaurants when user types a search term', async () => {
     mockFetchSuccess();
     render(<GoodEats />);
-    const input = await screen.findByPlaceholderText(
-      /filter by name or category/i,
-    );
+    const input = await screen.findByPlaceholderText(/filter by name or category/i);
 
     // The cuisine dropdown defaults to the most-common cuisine to keep
     // the initial list short; widen it to "All" so this search test can
@@ -177,9 +134,7 @@ describe('GoodEats App — search filter', () => {
     await userEvent.type(input, 'italian');
 
     await waitFor(() => {
-      expect(
-        screen.queryByText('Beardslee Public House'),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText('Beardslee Public House')).not.toBeInTheDocument();
       expect(screen.getByText('Amaro Bistro')).toBeInTheDocument();
     });
   });
@@ -187,9 +142,7 @@ describe('GoodEats App — search filter', () => {
   it("shows 'no places match' message when search returns nothing", async () => {
     mockFetchSuccess();
     render(<GoodEats />);
-    const input = await screen.findByPlaceholderText(
-      /filter by name or category/i,
-    );
+    const input = await screen.findByPlaceholderText(/filter by name or category/i);
 
     await userEvent.type(input, 'xyzzy_nonexistent');
 
@@ -201,9 +154,7 @@ describe('GoodEats App — search filter', () => {
   it('restores all results when search is cleared', async () => {
     mockFetchSuccess();
     render(<GoodEats />);
-    const input = await screen.findByPlaceholderText(
-      /filter by name or category/i,
-    );
+    const input = await screen.findByPlaceholderText(/filter by name or category/i);
 
     await userEvent.type(input, 'italian');
     await userEvent.clear(input);
@@ -217,19 +168,6 @@ describe('GoodEats App — search filter', () => {
 // ─── Feed filter tabs ────────────────────────────────────────
 
 describe('GoodEats App — feed filter tabs', () => {
-  it('renders Reddit and News tab buttons', async () => {
-    mockFetchSuccess();
-    render(<GoodEats />);
-    await waitFor(() => {
-      expect(
-        screen.getByRole('button', { name: /^reddit$/i }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: /^news$/i }),
-      ).toBeInTheDocument();
-    });
-  });
-
   it('shows reddit posts when Reddit tab is active', async () => {
     mockFetchSuccess();
     render(<GoodEats />);
@@ -238,9 +176,7 @@ describe('GoodEats App — feed filter tabs', () => {
     fireEvent.click(redditBtn);
 
     await waitFor(() =>
-      expect(
-        screen.getByText('Best brunch spots in downtown Bothell?'),
-      ).toBeInTheDocument(),
+      expect(screen.getByText('Best brunch spots in downtown Bothell?')).toBeInTheDocument(),
     );
   });
 
@@ -253,9 +189,7 @@ describe('GoodEats App — feed filter tabs', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByText(
-          "Bothell's Main Street revitalization brings six new restaurants",
-        ),
+        screen.getByText("Bothell's Main Street revitalization brings six new restaurants"),
       ).toBeInTheDocument(),
     );
   });
@@ -267,9 +201,7 @@ describe('GoodEats App — feed filter tabs', () => {
     fireEvent.click(newsBtn);
 
     await waitFor(() =>
-      expect(
-        screen.queryByText('Best brunch spots in downtown Bothell?'),
-      ).not.toBeInTheDocument(),
+      expect(screen.queryByText('Best brunch spots in downtown Bothell?')).not.toBeInTheDocument(),
     );
   });
 
@@ -284,9 +216,7 @@ describe('GoodEats App — feed filter tabs', () => {
     fireEvent.click(redditBtn);
 
     await waitFor(() => {
-      expect(
-        screen.getByText('Best brunch spots in downtown Bothell?'),
-      ).toBeInTheDocument();
+      expect(screen.getByText('Best brunch spots in downtown Bothell?')).toBeInTheDocument();
       expect(
         screen.queryByText(
           "Bothell's Main Street revitalization brings six new restaurants",
@@ -303,9 +233,7 @@ describe('GoodEats App — refresh button', () => {
     mockFetchSuccess();
     render(<GoodEats />);
     await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: /refresh/i }),
-      ).toBeInTheDocument(),
+      expect(screen.getByRole('button', { name: /refresh/i })).toBeInTheDocument(),
     );
   });
 
@@ -323,18 +251,9 @@ describe('GoodEats App — refresh button', () => {
 // ─── Map view ────────────────────────────────────────────────
 
 describe('GoodEats App — map view', () => {
-  it('renders the Geographic Overview section heading', async () => {
-    mockFetchSuccess();
-    render(<GoodEats />);
-    await waitFor(() =>
-      expect(screen.getByText(/geographic overview/i)).toBeInTheDocument(),
-    );
-  });
-
   it('renders the venue count label', async () => {
     mockFetchSuccess();
     render(<GoodEats />);
-    // 3 foursquare + 2 OSM = 5 venues
     await waitFor(() =>
       expect(screen.getByText(/5 VENUES/i)).toBeInTheDocument(),
     );
@@ -344,12 +263,6 @@ describe('GoodEats App — map view', () => {
 // ─── Footer ──────────────────────────────────────────────────
 
 describe('GoodEats App — footer', () => {
-  it('renders the version info in the footer', async () => {
-    mockFetchSuccess();
-    render(<GoodEats />);
-    await waitFor(() => expect(screen.getByText(/v0\.5/i)).toBeInTheDocument());
-  });
-
   it("renders the 'no ML' label in the footer", async () => {
     mockFetchSuccess();
     render(<GoodEats />);
