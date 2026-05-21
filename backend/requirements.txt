@@ -1,0 +1,11 @@
+fastapi>=0.110
+uvicorn[standard]>=0.27
+httpx>=0.27
+python-dotenv>=1.0
+pytest>=8.0
+ruff>=0.5
+# Notes:
+# - The Reddit fetcher shells out to the system `curl` binary (its bot
+#   filter rejects every Python HTTP client we tried). The Dockerfile
+#   installs curl in the image so prod parity matches dev.
+# - `ruff` is used by the CI/CD pipeline for backend static analysis.

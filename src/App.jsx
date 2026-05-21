@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
-import { MapPin, MessageSquare, Newspaper, Map as MapIcon, Search, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
+import { MapPin, MessageSquare, Newspaper, Map as MapIcon, Search, RefreshCw, AlertCircle, CheckCircle2, Shuffle, Star } from "lucide-react";
+import { parseApiResponse } from "./parsers.js";
 
 // ============================================================
-// GoodEats v0.5 - Bothell, WA Dashboard
-// Phase 1: Raw API data only, no ML processing
+// GoodEats v1.0 - Bothell, WA Dashboard
+// Phase 2: Live API data, no ML processing
 // Sources: Foursquare, OpenStreetMap, Reddit, GNews, Guardian
 // ============================================================
 
@@ -61,12 +62,29 @@ function StatusPill({ ok, count, source }) {
   );
 }
 
-function RestaurantCard({ r, onHover, onLeave, isHighlighted }) {
+function FavoriteButton({ favorited, onClick, label }) {
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      aria-label={favorited ? `Unfavorite ${label}` : `Favorite ${label}`}
+      aria-pressed={favorited}
+      title={favorited ? "Remove from favorites" : "Save to favorites"}
+      style={{ background: "transparent", border: "none", padding: "2px", cursor: "pointer", display: "flex", alignItems: "center", color: favorited ? "#B45309" : "#9CA3AF" }}
+    >
+      <Star size={15} strokeWidth={1.8} fill={favorited ? "#B45309" : "none"} />
+    </button>
+  );
+}
+
+function RestaurantCard({ r, onHover, onLeave, isHighlighted, favorited, onToggleFavorite }) {
   return (
     <div onMouseEnter={() => onHover(r.id)} onMouseLeave={onLeave} style={{ background: "white", border: isHighlighted ? "1px solid #1F2937" : "1px solid #E5E7EB", boxShadow: isHighlighted ? "0 4px 12px rgba(0,0,0,0.08)" : "none", padding: "18px", transition: "all 0.15s ease", cursor: "pointer" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
         <SourceBadge source="foursquare" />
-        {r.distance_m != null && <span style={{ fontSize: "11px", color: "#6B7280", fontFamily: "'JetBrains Mono', monospace" }}>{r.distance_m}m</span>}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {r.distance_m != null && <span style={{ fontSize: "11px", color: "#6B7280", fontFamily: "'JetBrains Mono', monospace" }}>{r.distance_m}m</span>}
+          <FavoriteButton favorited={favorited} onClick={onToggleFavorite} label={r.name} />
+        </div>
       </div>
       <h3 style={{ fontFamily: "'Source Serif Pro', Georgia, serif", fontSize: "19px", fontWeight: 600, color: "#111827", margin: "0 0 6px 0", lineHeight: 1.25 }}>{r.name}</h3>
       <div style={{ fontSize: "12px", color: "#6B7280", marginBottom: "8px", display: "flex", alignItems: "center", gap: "5px" }}>
@@ -81,12 +99,15 @@ function RestaurantCard({ r, onHover, onLeave, isHighlighted }) {
   );
 }
 
-function PlaceCard({ p, onHover, onLeave, isHighlighted }) {
+function PlaceCard({ p, onHover, onLeave, isHighlighted, favorited, onToggleFavorite }) {
   return (
     <div onMouseEnter={() => onHover(p.id)} onMouseLeave={onLeave} style={{ background: "white", border: isHighlighted ? "1px solid #1F2937" : "1px solid #E5E7EB", boxShadow: isHighlighted ? "0 4px 12px rgba(0,0,0,0.08)" : "none", padding: "16px", transition: "all 0.15s ease", cursor: "pointer" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" }}>
         <SourceBadge source="overpass" />
-        <span style={{ fontSize: "10px", color: "#6B7280", fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase" }}>{p.amenity}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={{ fontSize: "10px", color: "#6B7280", fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase" }}>{p.amenity}</span>
+          <FavoriteButton favorited={favorited} onClick={onToggleFavorite} label={p.name} />
+        </div>
       </div>
       <h3 style={{ fontFamily: "'Source Serif Pro', Georgia, serif", fontSize: "16px", fontWeight: 600, color: "#111827", margin: "0 0 4px 0", lineHeight: 1.25 }}>{p.name}</h3>
       {p.address && <div style={{ fontSize: "12px", color: "#6B7280", marginBottom: "6px" }}>{p.address}</div>}
@@ -109,6 +130,15 @@ function formatAgo(unixSec) {
   return `${Math.floor(diff / 604800)}w ago`;
 }
 
+const REDDIT_TITLE_MAX = 110;
+const REDDIT_BODY_MAX = 180;
+const REDDIT_FEED_LIMIT = 8;
+
+function truncate(s, max) {
+  if (!s) return "";
+  return s.length > max ? s.slice(0, max).trimEnd() + "…" : s;
+}
+
 function RedditPost({ post }) {
   const ago = post.created_utc ? formatAgo(post.created_utc) : "";
   return (
@@ -118,9 +148,9 @@ function RedditPost({ post }) {
         <span style={{ fontSize: "11px", color: "#9CA3AF", fontFamily: "'JetBrains Mono', monospace" }}>{post.subreddit} · {ago}</span>
       </div>
       <h4 style={{ fontFamily: "'Source Serif Pro', Georgia, serif", fontSize: "15px", fontWeight: 600, color: "#111827", margin: "0 0 6px 0", lineHeight: 1.3 }}>
-        <a href={post.permalink} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none" }}>{post.title}</a>
+        <a href={post.permalink} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "none" }} title={post.title}>{truncate(post.title, REDDIT_TITLE_MAX)}</a>
       </h4>
-      {post.selftext && <p style={{ fontSize: "13px", color: "#4B5563", lineHeight: 1.5, margin: "0 0 8px 0" }}>{post.selftext}</p>}
+      {post.selftext && <p style={{ fontSize: "13px", color: "#4B5563", lineHeight: 1.5, margin: "0 0 8px 0" }}>{truncate(post.selftext, REDDIT_BODY_MAX)}</p>}
       <div style={{ display: "flex", gap: "14px", fontSize: "11px", color: "#6B7280", fontFamily: "'JetBrains Mono', monospace" }}>
         <span>↑ {post.score}</span>
         <span style={{ display: "flex", alignItems: "center", gap: "3px" }}><MessageSquare size={11} strokeWidth={1.5} />{post.num_comments}</span>
@@ -211,8 +241,25 @@ export default function GoodEats() {
   const [loading, setLoading] = useState(true);
   const [usingMock, setUsingMock] = useState(false);
   const [highlighted, setHighlighted] = useState(null);
-  const [feedFilter, setFeedFilter] = useState("all");
+  const [feedFilter, setFeedFilter] = useState("reddit");
   const [search, setSearch] = useState("");
+  const [favorites, setFavorites] = useState(() => {
+    try {
+      const raw = typeof localStorage !== "undefined" && localStorage.getItem("goodeats:favorites");
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch { return new Set(); }
+  });
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [cuisineFilter, setCuisineFilter] = useState("");
+
+  function toggleFavorite(id) {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      try { localStorage.setItem("goodeats:favorites", JSON.stringify([...next])); } catch { /* ignore */ }
+      return next;
+    });
+  }
 
   async function load() {
     setLoading(true);
@@ -220,11 +267,11 @@ export default function GoodEats() {
       const resp = await fetch(`${API_BASE}/api/all`);
       if (!resp.ok) throw new Error(`Backend returned ${resp.status}`);
       const body = await resp.json();
-      setData(body);
+      setData(parseApiResponse(body) ?? body);
       setUsingMock(false);
     } catch (e) {
       console.warn("Backend unreachable, using mock fallback:", e);
-      setData(MOCK_FALLBACK);
+      setData(parseApiResponse(MOCK_FALLBACK) ?? MOCK_FALLBACK);
       setUsingMock(true);
     } finally {
       setLoading(false);
@@ -243,33 +290,71 @@ export default function GoodEats() {
     return [...fsq, ...osm].filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lon));
   }, [data]);
 
+  const cuisineOptions = useMemo(() => {
+    if (!data) return [];
+    const counts = new Map();
+    const bump = (raw) => {
+      const key = (raw || "").toLowerCase().trim();
+      if (!key) return;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    };
+    for (const r of (data.restaurants?.data || [])) {
+      for (const c of (r.categories || [])) bump(c);
+    }
+    for (const p of (data.places?.data || [])) {
+      for (const c of (p.cuisine || [])) bump(c);
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([cuisine, count]) => ({ cuisine, count }));
+  }, [data]);
+
+  // When the user hasn't picked a cuisine yet (cuisineFilter === ""),
+  // fall back to the most-common one so the initial list stays short.
+  const effectiveCuisine = cuisineFilter || cuisineOptions[0]?.cuisine || "__all__";
+
   const filteredRestaurants = useMemo(() => {
     if (!data?.restaurants?.data) return [];
-    if (!search) return data.restaurants.data;
     const q = search.toLowerCase();
-    return data.restaurants.data.filter((r) =>
-      (r.name || "").toLowerCase().includes(q) ||
-      (r.categories || []).some((c) => (c || "").toLowerCase().includes(q))
-    );
-  }, [data, search]);
+    return data.restaurants.data.filter((r) => {
+      if (showFavoritesOnly && !favorites.has(r.id)) return false;
+      if (effectiveCuisine !== "__all__") {
+        const hit = (r.categories || []).some((c) => (c || "").toLowerCase().trim() === effectiveCuisine);
+        if (!hit) return false;
+      }
+      if (!search) return true;
+      return (r.name || "").toLowerCase().includes(q) ||
+        (r.categories || []).some((c) => (c || "").toLowerCase().includes(q));
+    });
+  }, [data, search, showFavoritesOnly, favorites, effectiveCuisine]);
 
   const filteredPlaces = useMemo(() => {
     if (!data?.places?.data) return [];
-    if (!search) return data.places.data;
     const q = search.toLowerCase();
-    return data.places.data.filter((p) =>
-      (p.name || "").toLowerCase().includes(q) ||
-      (p.cuisine || []).some((c) => (c || "").toLowerCase().includes(q))
-    );
-  }, [data, search]);
+    return data.places.data.filter((p) => {
+      if (showFavoritesOnly && !favorites.has(p.id)) return false;
+      if (effectiveCuisine !== "__all__") {
+        const hit = (p.cuisine || []).some((c) => (c || "").toLowerCase().trim() === effectiveCuisine);
+        if (!hit) return false;
+      }
+      if (!search) return true;
+      return (p.name || "").toLowerCase().includes(q) ||
+        (p.cuisine || []).some((c) => (c || "").toLowerCase().includes(q));
+    });
+  }, [data, search, showFavoritesOnly, favorites, effectiveCuisine]);
+
+  const formatCuisine = (c) =>
+    c.replace(/_/g, " ").replace(/\b\w/g, (ch) => ch.toUpperCase());
 
   const feedItems = useMemo(() => {
     if (!data) return [];
     const items = [];
-    if (feedFilter === "all" || feedFilter === "reddit") {
-      (data.reddit?.data || []).forEach((p) => items.push({ kind: "reddit", data: p, sort: p.created_utc * 1000 }));
+    if (feedFilter === "reddit") {
+      (data.reddit?.data || [])
+        .slice(0, REDDIT_FEED_LIMIT)
+        .forEach((p) => items.push({ kind: "reddit", data: p, sort: p.created_utc * 1000 }));
     }
-    if (feedFilter === "all" || feedFilter === "news") {
+    if (feedFilter === "news") {
       (data.news?.data || []).forEach((a) => items.push({ kind: "gnews", data: a, sort: new Date(a.publishedAt).getTime() }));
       (data.articles?.data || []).forEach((a) => items.push({ kind: "guardian", data: a, sort: new Date(a.publishedAt).getTime() }));
     }
@@ -289,7 +374,7 @@ export default function GoodEats() {
       <header style={{ borderBottom: "1px solid #1F2937", background: "white", padding: "20px 32px" }}>
         <div style={{ maxWidth: "1400px", margin: "0 auto", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
           <div>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "#6B7280", letterSpacing: "0.15em", marginBottom: "4px" }}>VOL. 1 · ISSUE 0.5 · APR 2026</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "#6B7280", letterSpacing: "0.15em", marginBottom: "4px" }}>VOL. 1 · ISSUE 1.0 · {new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" }).toUpperCase()}</div>
             <h1 style={{ fontFamily: "'Source Serif Pro', Georgia, serif", fontSize: "36px", fontWeight: 700, margin: 0, letterSpacing: "-0.02em" }}>GoodEats<span style={{ color: "#B45309" }}>.</span></h1>
             <div style={{ fontSize: "13px", color: "#4B5563", fontStyle: "italic", marginTop: "2px" }}>A multi-source dining digest for Bothell, Washington</div>
           </div>
@@ -298,7 +383,7 @@ export default function GoodEats() {
               <RefreshCw size={12} strokeWidth={1.8} style={{ animation: loading ? "spin 1s linear infinite" : "none" }} />
               {loading ? "Loading" : "Refresh"}
             </button>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#6B7280", letterSpacing: "0.1em", textAlign: "right" }}>5 SOURCES · NO ML</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "10px", color: "#6B7280", letterSpacing: "0.1em", textAlign: "right" }}>5 SOURCES · {usingMock ? "MOCK DATA" : "LIVE DATA"}</div>
           </div>
         </div>
       </header>
@@ -340,9 +425,46 @@ export default function GoodEats() {
               <section>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", paddingBottom: "12px", borderBottom: "2px solid #1F2937" }}>
                   <h2 style={{ fontFamily: "'Source Serif Pro', Georgia, serif", fontSize: "22px", fontWeight: 600, margin: 0 }}>Restaurants & Places</h2>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "white", border: "1px solid #E5E7EB", padding: "6px 10px", width: "260px" }}>
-                    <Search size={14} color="#6B7280" strokeWidth={1.5} />
-                    <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter by name or category..." style={{ border: "none", outline: "none", fontSize: "13px", flex: 1, background: "transparent", fontFamily: "inherit" }} />
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <button
+                      onClick={() => setShowFavoritesOnly((v) => !v)}
+                      title={showFavoritesOnly ? "Show all venues" : "Show only favorited venues"}
+                      aria-pressed={showFavoritesOnly}
+                      style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: showFavoritesOnly ? "#B45309" : "white", border: "1px solid #B45309", fontSize: "11px", fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer", color: showFavoritesOnly ? "white" : "#B45309" }}
+                    >
+                      <Star size={12} strokeWidth={1.8} fill={showFavoritesOnly ? "white" : "none"} />
+                      {showFavoritesOnly ? `Favorites · ${favorites.size}` : `Favorites${favorites.size ? ` · ${favorites.size}` : ""}`}
+                    </button>
+                    <button
+                      onClick={() => {
+                        const pool = [...filteredRestaurants, ...filteredPlaces];
+                        if (pool.length === 0) return;
+                        const pick = pool[Math.floor(Math.random() * pool.length)];
+                        setHighlighted(pick.id);
+                      }}
+                      disabled={filteredRestaurants.length + filteredPlaces.length === 0}
+                      title="Pick a random venue from the visible list"
+                      style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", background: "white", border: "1px solid #1F2937", fontSize: "11px", fontWeight: 600, fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer", color: "#1F2937" }}
+                    >
+                      <Shuffle size={12} strokeWidth={1.8} />Pick One
+                    </button>
+                    {cuisineOptions.length > 0 && (
+                      <select
+                        value={effectiveCuisine}
+                        onChange={(e) => setCuisineFilter(e.target.value)}
+                        title="Filter venues by cuisine"
+                        style={{ padding: "6px 10px", fontSize: "12px", fontFamily: "'JetBrains Mono', monospace", border: "1px solid #1F2937", background: "white", color: "#1F2937", cursor: "pointer", letterSpacing: "0.04em" }}
+                      >
+                        <option value="__all__">All cuisines</option>
+                        {cuisineOptions.map(({ cuisine, count }) => (
+                          <option key={cuisine} value={cuisine}>{formatCuisine(cuisine)} ({count})</option>
+                        ))}
+                      </select>
+                    )}
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "white", border: "1px solid #E5E7EB", padding: "6px 10px", width: "260px" }}>
+                      <Search size={14} color="#6B7280" strokeWidth={1.5} />
+                      <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Filter by name or category..." style={{ border: "none", outline: "none", fontSize: "13px", flex: 1, background: "transparent", fontFamily: "inherit" }} />
+                    </div>
                   </div>
                 </div>
 
@@ -351,7 +473,7 @@ export default function GoodEats() {
                     <h3 style={{ fontSize: "12px", color: "#6B7280", letterSpacing: "0.1em", fontFamily: "'JetBrains Mono', monospace", margin: "0 0 12px 0", textTransform: "uppercase" }}>From Foursquare ({filteredRestaurants.length})</h3>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "24px" }}>
                       {filteredRestaurants.map((r) => (
-                        <RestaurantCard key={r.id} r={r} onHover={setHighlighted} onLeave={() => setHighlighted(null)} isHighlighted={highlighted === r.id} />
+                        <RestaurantCard key={r.id} r={r} onHover={setHighlighted} onLeave={() => setHighlighted(null)} isHighlighted={highlighted === r.id} favorited={favorites.has(r.id)} onToggleFavorite={() => toggleFavorite(r.id)} />
                       ))}
                     </div>
                   </>
@@ -362,14 +484,18 @@ export default function GoodEats() {
                     <h3 style={{ fontSize: "12px", color: "#6B7280", letterSpacing: "0.1em", fontFamily: "'JetBrains Mono', monospace", margin: "0 0 12px 0", textTransform: "uppercase" }}>From OpenStreetMap ({filteredPlaces.length})</h3>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
                       {filteredPlaces.map((p) => (
-                        <PlaceCard key={p.id} p={p} onHover={setHighlighted} onLeave={() => setHighlighted(null)} isHighlighted={highlighted === p.id} />
+                        <PlaceCard key={p.id} p={p} onHover={setHighlighted} onLeave={() => setHighlighted(null)} isHighlighted={highlighted === p.id} favorited={favorites.has(p.id)} onToggleFavorite={() => toggleFavorite(p.id)} />
                       ))}
                     </div>
                   </>
                 )}
 
                 {filteredRestaurants.length === 0 && filteredPlaces.length === 0 && (
-                  <div style={{ padding: "40px", textAlign: "center", color: "#6B7280", fontStyle: "italic" }}>No places match your filter.</div>
+                  <div style={{ padding: "40px", textAlign: "center", color: "#6B7280", fontStyle: "italic" }}>
+                    {showFavoritesOnly && favorites.size === 0
+                      ? "No favorites yet — tap the ★ on any card to save it."
+                      : "No places match your filter."}
+                  </div>
                 )}
               </section>
 
@@ -377,7 +503,7 @@ export default function GoodEats() {
                 <div style={{ paddingBottom: "12px", borderBottom: "2px solid #1F2937", marginBottom: "8px" }}>
                   <h2 style={{ fontFamily: "'Source Serif Pro', Georgia, serif", fontSize: "22px", fontWeight: 600, margin: "0 0 10px 0" }}>The Feed</h2>
                   <div style={{ display: "flex", gap: "4px" }}>
-                    {[{ key: "all", label: "All" }, { key: "reddit", label: "Reddit" }, { key: "news", label: "News" }].map((t) => (
+                    {[{ key: "reddit", label: "Reddit" }, { key: "news", label: "News" }].map((t) => (
                       <button key={t.key} onClick={() => setFeedFilter(t.key)} style={{ padding: "5px 12px", fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "'JetBrains Mono', monospace", border: feedFilter === t.key ? "1px solid #1F2937" : "1px solid #E5E7EB", background: feedFilter === t.key ? "#1F2937" : "white", color: feedFilter === t.key ? "white" : "#4B5563", cursor: "pointer" }}>{t.label}</button>
                     ))}
                   </div>
@@ -397,8 +523,8 @@ export default function GoodEats() {
         )}
 
         <footer style={{ marginTop: "48px", paddingTop: "20px", borderTop: "1px solid #E5E7EB", display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#6B7280", fontFamily: "'JetBrains Mono', monospace", letterSpacing: "0.05em" }}>
-          <div>GOODEATS · v0.5 · CLASS PROJECT BUILD</div>
-          <div>NO ML PROCESSING · RAW API DATA · PHASE 1 OF 3</div>
+          <div>GOODEATS · v1.0 · CLASS PROJECT BUILD</div>
+          <div>NO ML PROCESSING · {usingMock ? "MOCK DATA" : "LIVE API DATA"} · PHASE 2 OF 3</div>
         </footer>
       </main>
     </div>

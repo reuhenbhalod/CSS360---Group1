@@ -1,0 +1,47 @@
+# GoodEats production-equivalent stack.
+#
+# Brings up two containers:
+#   - backend  (FastAPI on :8000, SQLite persisted to a named volume)
+#   - frontend (built React served by nginx on :8080)
+#
+# The browser loads the frontend from :8080 and calls the backend
+# directly at :8000 (the backend container's host-mapped port), so no
+# proxy is needed.
+
+services:
+  backend:
+    build:
+      context: ./backend
+    image: goodeats-backend:latest
+    container_name: goodeats-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      GOODEATS_DB_PATH: /app/data/goodeats.db
+    volumes:
+      - backend-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    image: goodeats-frontend:latest
+    container_name: goodeats-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  backend-data:
