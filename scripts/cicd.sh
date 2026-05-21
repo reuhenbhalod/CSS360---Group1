@@ -11,10 +11,11 @@
 #   6. Verify         — curl /api/health, /api/all, and the frontend
 #
 # Usage:
-#   ./scripts/cicd.sh                # run the whole pipeline
-#   ./scripts/cicd.sh --skip-pull    # use the current working tree (good for local dev)
-#   ./scripts/cicd.sh --no-deploy    # CI-only (lint + tests + build), don't start prod
-#   ./scripts/cicd.sh --teardown     # stop the running stack
+#   ./scripts/cicd.sh                  # run the whole pipeline
+#   ./scripts/cicd.sh --skip-pull      # use the current working tree (good for local dev)
+#   ./scripts/cicd.sh --no-deploy      # CI-only (lint + tests + build), don't start prod
+#   ./scripts/cicd.sh --teardown       # stop the running stack
+#   ./scripts/cicd.sh --decrypt-keys   # decrypt backend/.env.enc → backend/.env (teammate onboarding)
 #
 # Exits non-zero on any failure so a wrapping CI system can detect it.
 # ─────────────────────────────────────────────────────────────────
@@ -33,13 +34,15 @@ warn()    { echo -e "${YELLOW}⚠${NC} $*"; }
 SKIP_PULL=0
 NO_DEPLOY=0
 TEARDOWN=0
+DECRYPT_KEYS=0
 for arg in "$@"; do
   case "$arg" in
-    --skip-pull) SKIP_PULL=1 ;;
-    --no-deploy) NO_DEPLOY=1 ;;
-    --teardown)  TEARDOWN=1 ;;
-    -h|--help)   sed -n '2,18p' "$0"; exit 0 ;;
-    *)           fail "unknown flag: $arg (try --help)" ;;
+    --skip-pull)    SKIP_PULL=1 ;;
+    --no-deploy)    NO_DEPLOY=1 ;;
+    --teardown)     TEARDOWN=1 ;;
+    --decrypt-keys) DECRYPT_KEYS=1 ;;
+    -h|--help)      sed -n '2,19p' "$0"; exit 0 ;;
+    *)              fail "unknown flag: $arg (try --help)" ;;
   esac
 done
 
@@ -51,6 +54,32 @@ if [[ "$TEARDOWN" == 1 ]]; then
   stage "TEARDOWN"
   docker compose down -v
   ok "stack stopped, volumes removed"
+  exit 0
+fi
+
+# ─── 0. Decrypt-keys shortcut (teammate onboarding) ──────────────
+# Decrypts backend/.env.enc → backend/.env so a teammate who just
+# cloned the repo can run the dashboard with real API keys. The
+# passphrase is shared out-of-band (Slack DM, 1Password, etc).
+if [[ "$DECRYPT_KEYS" == 1 ]]; then
+  stage "DECRYPT backend/.env"
+  command -v openssl >/dev/null || fail "openssl not installed"
+  [[ -f backend/.env.enc ]] || fail "backend/.env.enc not found — ask the project owner to commit one"
+  if [[ -f backend/.env ]]; then
+    warn "backend/.env already exists — press Enter to overwrite, Ctrl-C to abort"
+    read -r
+  fi
+  COMMON_ARGS=(enc -d -aes-256-cbc -pbkdf2 -iter 600000 -a
+               -in backend/.env.enc -out backend/.env)
+  if [[ -n "${GOODEATS_ENV_PASSPHRASE:-}" ]]; then
+    openssl "${COMMON_ARGS[@]}" -pass env:GOODEATS_ENV_PASSPHRASE \
+      || fail "decrypt failed — wrong passphrase?"
+  else
+    openssl "${COMMON_ARGS[@]}" \
+      || fail "decrypt failed — wrong passphrase?"
+  fi
+  ok "wrote backend/.env"
+  echo "  Now run: ./scripts/cicd.sh (or python main.py inside backend/)"
   exit 0
 fi
 

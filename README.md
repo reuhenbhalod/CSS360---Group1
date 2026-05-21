@@ -20,6 +20,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env        # then paste in Foursquare / GNews / Guardian keys
+                            # (or, if you're a teammate: see "Onboarding" below)
 python main.py              # http://localhost:8000
 
 # Frontend (new terminal, from repo root)
@@ -33,6 +34,35 @@ API key signups (all free, instant):
 - Foursquare: <https://foursquare.com/developers/>
 - GNews: <https://gnews.io/>
 - The Guardian: <https://open-platform.theguardian.com/access/>
+
+---
+
+## Teammate onboarding (shared API keys)
+
+`backend/.env` is gitignored. To avoid every teammate signing up for their own
+keys, the repo ships an **encrypted** copy at `backend/.env.enc` (AES-256-CBC +
+PBKDF2). The passphrase is shared out-of-band (Slack DM / password manager).
+
+```bash
+./scripts/cicd.sh --decrypt-keys       # prompts for passphrase, writes backend/.env
+```
+
+Then run the app normally (`python main.py`, `npm run dev`, or `./scripts/cicd.sh`).
+
+### When you rotate keys (project owner)
+
+1. Update `backend/.env` with the new key values.
+2. Re-encrypt and commit:
+   ```bash
+   ./scripts/encrypt-env.sh              # writes backend/.env.enc
+   git add backend/.env.enc && git commit -m "Rotate API keys"
+   ```
+3. Tell teammates to re-run `./scripts/cicd.sh --decrypt-keys` (use the same
+   passphrase unless you also rotated that).
+
+**Why this works:** the encrypted blob is safe to commit (decryption requires
+the passphrase). Only one secret — the passphrase — needs to be shared out-of-band,
+instead of three API keys that change whenever you rotate.
 
 ---
 
@@ -76,10 +106,11 @@ The system-level `curl` binary is also required and is present on every supporte
 ### Useful flags
 
 ```bash
-./scripts/cicd.sh --skip-pull     # use the current working tree (good for local dev iteration)
-./scripts/cicd.sh --no-deploy     # CI-only: lint + tests + build, no docker run
-./scripts/cicd.sh --teardown      # docker compose down -v (stop the deployed stack)
-./scripts/cicd.sh --help          # print the inline header comment
+./scripts/cicd.sh --skip-pull       # use the current working tree (good for local dev iteration)
+./scripts/cicd.sh --no-deploy       # CI-only: lint + tests + build, no docker run
+./scripts/cicd.sh --teardown        # docker compose down -v (stop the deployed stack)
+./scripts/cicd.sh --decrypt-keys    # decrypt backend/.env.enc → backend/.env (teammate onboarding)
+./scripts/cicd.sh --help            # print the inline header comment
 ```
 
 ### After a successful deploy
@@ -96,6 +127,8 @@ open http://localhost:8080
 ### GitHub Actions equivalent
 
 The same six stages run automatically on every push and PR via [`.github/workflows/ci.yml`](.github/workflows/ci.yml). The Actions tab on GitHub shows the latest run.
+
+**CI secrets:** the workflow writes `FOURSQUARE_API_KEY`, `GNEWS_API_KEY`, and `GUARDIAN_API_KEY` from repo Actions Secrets into `backend/.env` before building. Set these under **Settings → Secrets and variables → Actions**. Unset secrets are blank and that source degrades gracefully (`ok:false`).
 
 ---
 
